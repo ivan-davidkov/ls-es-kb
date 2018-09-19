@@ -1,0 +1,68 @@
+version: '3'
+services:
+
+  elasticsearch:
+    build:
+      context: elasticsearch
+    container_name: elasticsearch
+    volumes:
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./data/input:/data
+      - ./data/output:/output
+    ports:
+      - 9200:9200
+      - 9300:9300
+    environment:
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - testnet
+
+  logstash:
+    build:
+      context: logstash
+    container_name: logstash
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./logstash/config/pipelines.yml:/usr/share/logstash/config/pipelines.yml
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+      - ./logstash/templates:/usr/share/logstash/templates
+      - ./data/input:/data
+      - ./data/output:/output
+    ports:
+      - 5044:5044
+      - 5555:5555
+    environment:
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    networks:
+      - testnet
+    links:
+      - elasticsearch
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    build:
+      context: kibana
+    container_name: kibana
+    volumes:
+      - ./kibana/config:/usr/share/kibana/config
+      - ./data/input:/data
+      - ./data/output:/output
+    ports:
+      - 5601:5601
+    networks:
+      - testnet
+    links:
+      - elasticsearch
+    depends_on:
+      - elasticsearch
+
+networks:
+  testnet:
+    driver: bridge
